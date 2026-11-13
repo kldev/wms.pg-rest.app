@@ -6,7 +6,7 @@ with a **Blazor .NET 10** front on top. The rules (stock never below zero, uniqu
 database; PostgREST exposes them as REST + OpenAPI; Blazor only displays and calls them. Requirements:
 `docs/requirements/requirements.md`, domain: `docs/domain.md`. This file mirrors the project's SDD record.
 
-State: **MVP** - S01 done (skeleton and compose stack); S02 next.
+State: **MVP** - S01 (skeleton, compose) and S02 (database and API through PostgREST) done; S03 next.
 
 ## What it proves
 
@@ -59,6 +59,11 @@ Works today:
 - S01: `./infrastructure/start.sh` from a fresh clone brings up PostgreSQL 18.6, PostgREST v16.5 (connects as
   `authenticator`, serves the empty `api` schema and its OpenAPI) and the Blazor host (`/health`), all healthy, ports on
   127.0.0.1 only; `--init-env` generates random secrets;
-- build with `TreatWarningsAsErrors`, CSharpier and JetBrains inspection clean, Husky.Net hooks, 1 test.
+- S02: the API through PostgREST from `db/init/020-api.sql` - `rpc/login` (bcrypt in `pgcrypto`, HS256 JWT signed in SQL,
+  lifetime from `.env`), products and warehouses (create, edit, filter, sort, page; no delete), read-only stock and
+  movements, `rpc/receive` and `rpc/issue` as the only way to change stock (row lock; 409 when not enough); everything
+  owned by `wms_owner`, `web_anon` may only sign in; optional invented demo data;
+- build with `TreatWarningsAsErrors`, CSharpier and JetBrains inspection clean, Husky.Net hooks;
+- 32 tests (31 API tests on Testcontainers with PostgreSQL 18.6 + PostgREST v16.5, ~5 s).
 
-Next: S02 database and API, S03 Blazor front, S04 publication.
+Next: S03 Blazor front, S04 publication.
