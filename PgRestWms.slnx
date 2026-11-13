@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PgRestWms.Web/PgRestWms.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PgRestWms.Tests/PgRestWms.Tests.csproj" />
+  </Folder>
+</Solution>

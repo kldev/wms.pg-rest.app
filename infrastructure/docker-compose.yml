@@ -1,0 +1,78 @@
+# Local stack: PostgreSQL 18.6 -> PostgREST (the API, generated from the `api` schema) -> Blazor.
+# Start: ./start.sh (needs .env - ./start.sh --init-env). Every port is bound to 127.0.0.1 only.
+name: wms-pg-rest
+
+services:
+  db:
+    image: postgres:18.6-alpine
+    container_name: wms-db
+    environment:
+      POSTGRES_DB: wms
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Read by db/init/*.sh - the roles' passwords and the JWT settings are set once, on an empty volume.
+      AUTHENTICATOR_PASSWORD: ${AUTHENTICATOR_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_LIFETIME: ${JWT_LIFETIME:-8 hours}
+    volumes:
+      # PostgreSQL 18 images keep data in /var/lib/postgresql/18/docker - mount the parent directory.
+      - postgres_data:/var/lib/postgresql
+      # Runs only when the volume is empty; after a change in db/init: ./start.sh --clean && ./start.sh
+      - ../db/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:${DB_PORT:-6502}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d wms"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: on-failure
+
+  api:
+    image: postgrest/postgrest:v16.5
+    container_name: wms-api
+    environment:
+      # PostgREST connects only as `authenticator` (LOGIN NOINHERIT, not a superuser, owns nothing) and switches
+      # to `web_anon` or to the role in the JWT for each request.
+      PGRST_DB_URI: postgres://authenticator:${AUTHENTICATOR_PASSWORD}@db:5432/wms
+      PGRST_DB_SCHEMAS: api
+      PGRST_DB_ANON_ROLE: web_anon
+      # Must match db.JWT_SECRET - the database signs the tokens, PostgREST verifies them.
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:${API_PORT:-6501}
+      # /live and /ready for the healthcheck; not published on the host. `postgrest --ready` refuses the default
+      # host "!4", so the admin server listens on localhost of the container only.
+      PGRST_ADMIN_SERVER_PORT: 3001
+      PGRST_ADMIN_SERVER_HOST: localhost
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${API_PORT:-6501}:3000"
+    healthcheck:
+      # The image has no shell or curl - the binary checks its own /ready.
+      test: ["CMD", "postgrest", "--ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: on-failure
+
+  web:
+    build:
+      context: ../
+      dockerfile: ./Dockerfile
+    image: wms-pg-rest-web:dev
+    container_name: wms-web
+    environment:
+      ASPNETCORE_ENVIRONMENT: docker
+      # Container port of PostgREST, inside the compose network.
+      PostgRest__BaseUrl: http://api:3000
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEB_PORT:-6500}:8080"
+    restart: on-failure
+
+volumes:
+  postgres_data:

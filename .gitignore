@@ -1,0 +1,39 @@
+# Build
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+artifacts/
+publish/
+
+# Tests / coverage
+TestResults/
+coverage/
+*.trx
+
+# IDE
+.idea/
+.vs/
+.vscode/*
+!.vscode/extensions.json
+*.user
+*.suo
+*.DotSettings.user
+
+# Local config and secrets - .env holds the passwords and the JWT secret
+.env
+.env.*
+!.env-sample
+appsettings.*.local.json
+*.pfx
+
+# Local agent task files (never published)
+.instructions/
+
+# Tailwind standalone CLI binary (downloaded by scripts/tailwind.sh)
+.tools/
+
+# OS
+.DS_Store
+Thumbs.db
+
+docker-compose.override.yml
