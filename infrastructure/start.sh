@@ -25,6 +25,7 @@ print_endpoints() {
     echo "  Web:        http://127.0.0.1:${WEB_PORT:-6500}            (health: /health)"
     echo "  PostgREST:  http://127.0.0.1:${API_PORT:-6501}            (OpenAPI: /)"
     echo "  PostgreSQL: 127.0.0.1:${DB_PORT:-6502}  db wms, user postgres (password in .env)"
+    echo "  Sign in:    ${APP_USERNAME:-demo} (password: APP_PASSWORD in .env)"
 }
 
 usage() {
@@ -80,8 +81,9 @@ while [[ $# -gt 0 ]]; do
             sed -e "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(random_hex 16)/" \
                 -e "s/^AUTHENTICATOR_PASSWORD=.*/AUTHENTICATOR_PASSWORD=$(random_hex 16)/" \
                 -e "s/^JWT_SECRET=.*/JWT_SECRET=$(random_hex 32)/" \
+                -e "s/^APP_PASSWORD=.*/APP_PASSWORD=$(random_hex 8)/" \
                 .env-sample > .env
-            echo ".env created with random secrets"; exit 0 ;;
+            echo ".env created with random secrets - sign in as $(sed -n 's/^APP_USERNAME=//p' .env), password: $(sed -n 's/^APP_PASSWORD=//p' .env)"; exit 0 ;;
         --stop) "${COMPOSE[@]}" down; exit 0 ;;
         -c|--clean)
             echo "Removing containers and volumes..."

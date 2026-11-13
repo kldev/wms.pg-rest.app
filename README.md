@@ -36,14 +36,65 @@ cd infrastructure
 The SQL in `db/init/` runs only when the database volume is empty. After changing it: `./start.sh --clean && ./start.sh`
 (this deletes the local data).
 
+## The API
+
+Everything in the `api` schema is the API; tables live in `data` and are never exposed. `db/init/020-api.sql`
+is the whole "backend".
+
+| Request | What |
+|---|---|
+| `POST /rpc/login` `{"username","password"}` | JWT (`token`) for `Authorization: Bearer` - the only call allowed without it |
+| `GET /products`, `/warehouses`, `/stock`, `/movements` | lists - PostgREST filters (`?sku=like.BOLT*`), `order`, `limit`/`offset`, `Prefer: count=exact` |
+| `POST`, `PATCH /products`, `/warehouses` | master data (no delete) |
+| `POST /rpc/receive`, `/rpc/issue` `{"product_id","warehouse_id","quantity","note"}` | the only way to change stock |
+| `POST /rpc/me` | the signed-in user |
+
+```bash
+cd infrastructure && set -a && . ./.env && set +a
+TOKEN=$(curl -s http://127.0.0.1:6501/rpc/login -H 'Content-Type: application/json' \
+  -d "{\"username\":\"$APP_USERNAME\",\"password\":\"$APP_PASSWORD\"}" | jq -r .token)
+curl -s 'http://127.0.0.1:6501/stock?select=sku,warehouse_code,quantity&order=sku' -H "Authorization: Bearer $TOKEN"
+```
+
+Rules live in the database and come back as PostgREST errors (`code`, `message`, `details`, `hint`):
+
+| Case | HTTP | `code` |
+|---|---|---|
+| no or invalid token | 401 | `42501` / `PGRST301` |
+| wrong username or password | 403 | `28P01` |
+| writing what the role may not (delete, write to `stock`) | 403 | `42501` |
+| duplicate SKU or warehouse code | 409 | `23505` |
+| invalid value (SKU format, unit) | 400 | `23514` |
+| quantity <= 0 | 400 | `22023` |
+| unknown product or warehouse | 404 | `PT404` |
+| issue more than the stock | 409 | `PT409` (`Not enough stock: 5 available`) |
+
+The OpenAPI document at `/` lists what the caller's role may use: without a token only `rpc/login`.
+
+### Add something to the API
+
+1. Add a view or function to `api` (with `SET ROLE wms_owner`) and grant it to `app_user`.
+2. On a running database run the same SQL with `psql`, then `NOTIFY pgrst, 'reload schema';` - PostgREST serves it
+   at once, no restart and no C# change (`SchemaReloadTests` shows it).
+3. Put the SQL into `db/init/` so a fresh volume gets it too.
+
+Roles: PostgREST logs in as `authenticator` (no rights of its own) and switches to `web_anon` (no token) or
+`app_user` (the JWT's `role`). Everything is owned by `wms_owner`; `SECURITY DEFINER` functions run as it, never as a
+superuser. The JWT is HS256, signed in SQL with `pgcrypto` (`data.jwt_sign`); its key is `JWT_SECRET` in `.env`,
+shared by the database and PostgREST.
+
 ## Develop
 
 ```bash
 dotnet restore             # also restores the local tools (CSharpier, Husky.Net) and installs the git hooks
 dotnet build PgRestWms.slnx
-dotnet test --solution PgRestWms.slnx
+dotnet test --solution PgRestWms.slnx                                # needs Docker (Testcontainers)
+dotnet test --solution PgRestWms.slnx --filter-class '*.StockTests'  # one class
 dotnet csharpier format .
 ```
+
+API tests (`tests/PgRestWms.Tests/Api/`) start PostgreSQL 18.6 with `db/init` and PostgREST in Docker, with random
+secrets, and call the API over HTTP.
 
 Run the Blazor host outside Docker: `./infrastructure/start.sh -s web`, then
 `PostgRest__BaseUrl=http://127.0.0.1:6501 dotnet run --project src/PgRestWms.Web`.

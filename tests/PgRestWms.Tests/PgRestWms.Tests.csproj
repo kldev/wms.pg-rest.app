@@ -1,9 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Blazor host in memory, and the API end to end: PostgreSQL 18.6 with db/init and PostgREST in Docker. -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="xunit.v3" />
   </ItemGroup>
   <ItemGroup>

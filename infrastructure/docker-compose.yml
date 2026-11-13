@@ -14,6 +14,9 @@ services:
       AUTHENTICATOR_PASSWORD: ${AUTHENTICATOR_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       JWT_LIFETIME: ${JWT_LIFETIME:-8 hours}
+      APP_USERNAME: ${APP_USERNAME:-demo}
+      APP_PASSWORD: ${APP_PASSWORD}
+      DEMO_DATA: ${DEMO_DATA:-true}
     volumes:
       # PostgreSQL 18 images keep data in /var/lib/postgresql/18/docker - mount the parent directory.
       - postgres_data:/var/lib/postgresql

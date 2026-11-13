@@ -54,7 +54,7 @@
 3. Users in `data.users` with a password hash (`pgcrypto` `crypt` + `gen_salt('bf')`). `api.login(username,
    password)` returns `{ token }`; the token is HS256, signed in SQL with `pgcrypto` `hmac` (the `pgjwt` extension is
    not in the alpine image), claims `role`, `sub` (username), `exp` (lifetime from `.env`, default 8 h, D14). Wrong credentials →
-   PostgREST error, no hint which part was wrong.
+   403 (`28P01`), the same message for a wrong user and a wrong password.
 4. The JWT secret is one value from `.env`, given to PostgREST (`PGRST_JWT_SECRET`) and to the database (setting read
    by `api.login`) at initialisation; it is never in the repository.
 5. Domain (D4):
