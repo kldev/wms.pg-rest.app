@@ -9,6 +9,8 @@ Rules:
   Blazor host - it calls PostgREST over HTTP only.
 - Tables in schema `data`; schema `api` holds only views and functions, granted to `web_anon` / `app_user`.
   Rules (stock >= 0, unique codes) are enforced in the database.
+- Every function in `api` is `plpgsql` (an inlined `LANGUAGE sql` function skips EXECUTE checks under PostgREST's
+  prepared statements - see `PgRest.md`, "Pitfalls").
 - PostgREST connects as `authenticator` only (NOINHERIT, no superuser, owns nothing).
 - Public repo: no secrets (only `infrastructure/.env-sample` placeholders), no personal data, no real company names,
   no private addresses (LAN IPs, internal host names). `.instructions/` is local and git-ignored.

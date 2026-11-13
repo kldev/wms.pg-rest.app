@@ -2,7 +2,8 @@
 
 A mini warehouse (products, warehouses, stock, receipts, issues) where the REST API is **not written in C#**:
 [PostgREST](https://github.com/PostgREST/postgrest) generates it from the PostgreSQL schema. The front is
-**Blazor on .NET 10**. Product goals and decisions: [`PRODUCT.md`](PRODUCT.md).
+**Blazor on .NET 10**. How PostgREST turns the schema into the API, step by step: [`PgRest.md`](PgRest.md).
+Product goals and decisions: [`PRODUCT.md`](PRODUCT.md).
 
 ```
 browser ──► Blazor (Interactive Server, :6500) ──HTTP + JWT──► PostgREST (:6501) ──► PostgreSQL 18.6 (:6502)
