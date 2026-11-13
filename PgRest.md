@@ -12,14 +12,14 @@ sequenceDiagram
     participant B as Blazor host
     participant P as PostgREST
     participant D as PostgreSQL
-    B->>P: POST /rpc/issue  Authorization: Bearer <JWT>  {"product_id":..., "quantity": 6}
-    P->>P: verify the JWT (HS256, JWT_SECRET), read the "role" claim
-    P->>D: BEGIN (connection of authenticator, from the pool)
-    P->>D: SET LOCAL ROLE app_user; set_config('request.jwt.claims', '{"sub":"demo",...}', true)
-    P->>D: SELECT api.issue(product_id := ..., warehouse_id := ..., quantity := 6, note := NULL)
-    D-->>P: ERROR PT409 "Not enough stock: 5 available" (HINT quantity)
+    B->>P: POST /rpc/issue with Bearer JWT, body product_id, warehouse_id, quantity 6
+    P->>P: verify the JWT signature (HS256, JWT_SECRET) and read the role claim
+    P->>D: BEGIN on a pooled connection of authenticator
+    P->>D: SET LOCAL ROLE app_user, then set request.jwt.claims (sub = demo)
+    P->>D: SELECT api.issue(product_id, warehouse_id, quantity, note)
+    D-->>P: ERROR PT409 Not enough stock - 5 available (HINT quantity)
     P->>D: ROLLBACK
-    P-->>B: 409 {"code":"PT409","message":"Not enough stock: 5 available","hint":"quantity"}
+    P-->>B: 409 with JSON code PT409, message, hint quantity
 ```
 
 Every request is one transaction, run as the role the token names. PostgREST itself has no rights: it logs in as
