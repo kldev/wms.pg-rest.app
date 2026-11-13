@@ -123,6 +123,29 @@ public sealed class PostgRestFixture : IAsyncLifetime
         }
     }
 
+    /// <summary>One value from SQL as the superuser (psql -At).</summary>
+    public async Task<string> ScalarAsync(string sql)
+    {
+        var db = _db ?? throw new InvalidOperationException("Not started.");
+        var result = await db.ExecAsync([
+            "psql",
+            "-U",
+            "postgres",
+            "-d",
+            "wms",
+            "-At",
+            "-v",
+            "ON_ERROR_STOP=1",
+            "-c",
+            sql,
+        ]);
+        if (result.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"psql failed: {result.Stderr}");
+        }
+        return result.Stdout.Trim();
+    }
+
     private static string InitDirectory()
     {
         for (

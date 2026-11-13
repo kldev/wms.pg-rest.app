@@ -59,12 +59,16 @@ BEGIN
 END $$;
 COMMENT ON FUNCTION api.login IS 'Signs in and returns a JWT for the Authorization: Bearer header.';
 
-CREATE FUNCTION api.me() RETURNS jsonb LANGUAGE sql STABLE AS $$
-  SELECT jsonb_build_object(
+-- plpgsql, not sql: PostgreSQL inlines a simple SQL function into the query plan and checks EXECUTE only when it plans.
+-- PostgREST keeps prepared statements per pooled connection, so a plan made for app_user would later serve web_anon
+-- without the check (seen in tests: anonymous rpc/me answered 200). Every function in `api` is plpgsql for this reason.
+CREATE FUNCTION api.me() RETURNS jsonb LANGUAGE plpgsql STABLE AS $$
+BEGIN
+  RETURN jsonb_build_object(
     'username', current_setting('request.jwt.claims', true)::jsonb ->> 'sub',
     'role', current_user
-  )
-$$;
+  );
+END $$;
 COMMENT ON FUNCTION api.me IS 'The signed-in user.';
 
 ------------------------------------------------------------------------------------------------------------------------
