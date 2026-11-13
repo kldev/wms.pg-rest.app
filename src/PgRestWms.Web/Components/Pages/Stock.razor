@@ -1,0 +1,80 @@
+@page "/"
+@inherits ListPage<StockRow>
+
+<PageTitle>Stock · wms.pg-rest</PageTitle>
+
+<PageHeader Title="Stock" Subtitle="Quantity per product and warehouse - changed only by receipts and issues.">
+    <Actions>
+        <a href="book" class="btn btn-primary">Receive / Issue</a>
+    </Actions>
+</PageHeader>
+
+<form class="mb-3 flex flex-wrap items-center gap-2" @onsubmit="ApplySearch">
+    <input name="q" class="input w-72" placeholder="Search SKU or product" aria-label="Search" @bind="SearchText" />
+    <select name="warehouse" class="input w-56" aria-label="Warehouse" value="@WarehouseParameter" @onchange="e => SetFilter(WarehouseFilter, e.Value as string)">
+        <option value="">All warehouses</option>
+        @foreach (var w in _warehouses)
+        {
+            <option value="@w.Code">@w.Code · @w.Name</option>
+        }
+    </select>
+    <button type="submit" class="btn">Search</button>
+</form>
+
+<Alert Message="@Error" />
+
+@if (Rows is { } rows)
+{
+    <div class="overflow-x-auto rounded-lg border border-line bg-surface">
+        <table class="data-table" data-testid="stock">
+            <thead>
+                <tr>
+                    <SortHeader Label="SKU" Href="@SortHref("sku")" Active="@(Sort == "sku")" Descending="Descending" />
+                    <SortHeader Label="Product" Href="@SortHref("product_name")" Active="@(Sort == "product_name")" Descending="Descending" />
+                    <SortHeader Label="Warehouse" Href="@SortHref("warehouse_code")" Active="@(Sort == "warehouse_code")" Descending="Descending" />
+                    <SortHeader Label="Quantity" Href="@SortHref("quantity")" Active="@(Sort == "quantity")" Descending="Descending" Numeric="true" />
+                    <SortHeader Label="Last change" Href="@SortHref("updated_at")" Active="@(Sort == "updated_at")" Descending="Descending" />
+                    <th><span class="sr-only">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in rows.Items)
+                {
+                    <tr data-row="@row.Sku">
+                        <td class="code" data-col="sku">@row.Sku</td>
+                        <td>@row.ProductName</td>
+                        <td><span class="code">@row.WarehouseCode</span> <span class="text-muted">@row.WarehouseName</span></td>
+                        <td class="num @(row.Quantity == 0 ? "text-muted" : "")" data-col="quantity"><Quantity Value="row.Quantity" Unit="@row.Unit" /></td>
+                        <td class="whitespace-nowrap text-muted"><LocalTime Value="row.UpdatedAt" /></td>
+                        <td class="text-right whitespace-nowrap">
+                            <a class="btn btn-ghost h-7 px-2" href="@BookHref(MovementKinds.Receipt, row)">Receive</a>
+                            <a class="btn btn-ghost h-7 px-2" href="@BookHref(MovementKinds.Issue, row)">Issue</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <Pager Page="PageNumber" Size="PageSize" Total="rows.Total" PageHref="PageHref" SizeHref="SizeHref" />
+}
+
+@code {
+    private const string WarehouseFilter = "warehouse";
+    private IReadOnlyList<Warehouse> _warehouses = [];
+
+    [SupplyParameterFromQuery(Name = WarehouseFilter)]
+    public string? WarehouseParameter { get; set; }
+
+    protected override string Resource => "stock";
+    protected override IReadOnlyList<string> SortColumns { get; } = ["sku", "product_name", "warehouse_code", "quantity", "updated_at"];
+    protected override string TieBreaker => "warehouse_code";
+
+    protected override void Filter(PostgRestQuery query) =>
+        query.Search(SearchParameter, "sku", "product_name").Eq("warehouse_code", WarehouseParameter);
+
+    protected override async Task OnInitializedAsync() =>
+        await RunAsync(async () => _warehouses = await Api.AllAsync<Warehouse>("warehouses?order=code"));
+
+    private static string BookHref(string kind, StockRow row) =>
+        $"book?kind={kind}&product={row.ProductId}&warehouse={row.WarehouseId}";
+}

@@ -27,7 +27,7 @@ public sealed class PostgRestFixture : IAsyncLifetime
     private PostgreSqlContainer? _db;
     private IContainer? _api;
 
-    private Uri BaseAddress { get; set; } = null!;
+    public Uri BaseAddress { get; private set; } = null!;
 
     public async ValueTask InitializeAsync()
     {

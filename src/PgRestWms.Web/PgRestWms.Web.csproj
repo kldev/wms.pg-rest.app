@@ -2,7 +2,20 @@
   <!-- Blazor Web App (Interactive Server). Talks to PostgREST over HTTP only - no database access from C#. -->
   <PropertyGroup>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <!-- The SDK turns this on only when it sees .razor files at restore time; the Dockerfile restores from the .csproj
+         alone, and without it the image has no _framework/blazor.web.js (no interactivity at all). -->
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
   </PropertyGroup>
+  <!-- Tailwind CSS: rebuilds wwwroot/app.css (committed) when the styles or the markup change. Runs only where
+       scripts/tailwind.sh has downloaded the standalone CLI into .tools/; images and CI use the committed file. -->
+  <ItemGroup>
+    <TailwindInput Include="Styles/app.css;Components/**/*.razor" />
+  </ItemGroup>
+  <Target Name="TailwindBuild" BeforeTargets="BeforeBuild"
+          Condition="'$(SkipTailwind)' != 'true' And Exists('../../.tools/tailwindcss')"
+          Inputs="@(TailwindInput)" Outputs="wwwroot/app.css">
+    <Exec Command="bash ../../scripts/tailwind.sh" />
+  </Target>
   <Target Name="Husky" BeforeTargets="Restore;CollectPackageReferences" Condition="'$(HUSKY)' != 0" Inputs="../../.config/dotnet-tools.json" Outputs="../../.husky/_/install.stamp">
     <Exec Command="dotnet tool restore" StandardOutputImportance="Low" StandardErrorImportance="High" />
     <Exec Command="dotnet husky install" StandardOutputImportance="Low" StandardErrorImportance="High" WorkingDirectory="../.." />
@@ -11,4 +24,7 @@
       <FileWrites Include="../../.husky/_/install.stamp" />
     </ItemGroup>
   </Target>
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" PrivateAssets="all" />
+  </ItemGroup>
 </Project>

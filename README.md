@@ -83,6 +83,54 @@ Roles: PostgREST logs in as `authenticator` (no rights of its own) and switches 
 superuser. The JWT is HS256, signed in SQL with `pgcrypto` (`data.jwt_sign`); its key is `JWT_SECRET` in `.env`,
 shared by the database and PostgREST.
 
+## The front
+
+Blazor Web App on .NET 10, Interactive Server (prerendered), Tailwind CSS with its own small components
+(`src/PgRestWms.Web/Components/Ui/`). Pages: Stock, Receive / Issue, Movements, Products, Warehouses.
+
+| | |
+|---|---|
+| ![Stock](docs/screens/stock.png) | ![Movements](docs/screens/movements.png) |
+| ![A duplicate SKU refused by the database](docs/screens/product-duplicate-sku.png) | ![An issue larger than the stock](docs/screens/issue-not-enough-stock.png) |
+
+- **Only HTTP to PostgREST** (`PostgRest/PostgRestClient.cs`) - no database driver in the host. The client is written by
+  hand: PostgREST's OpenAPI (Swagger 2.0) does not describe its filters, `Prefer` headers or `Content-Range`, which is
+  what the lists use.
+- **Errors come from the database.** A refused write comes back as `{code, message, hint}`; `PostgRestException` maps a
+  known constraint (`products_sku_key`, ...) or the function's `HINT` (`quantity`, ...) to the form field, and the form
+  shows the message there.
+- **Search, filters, sort and page are in the URL** (`/products?q=bolt&sort=sku&desc=true&page=2&size=50`), so a list
+  can be linked and Back works.
+- **Sign-in:** the form posts to `/auth/login`, which calls `rpc/login`. The JWT stays in the server's memory
+  (`Auth/SessionTokens.cs`); the browser gets an `HttpOnly`, `SameSite=Lax` cookie with a session id only. A restart of
+  the host ends the sessions. 10 attempts per minute per address (`Auth__SignInAttemptsPerMinute`).
+
+| Setting (environment variable) | Default | |
+|---|---|---|
+| `PostgRest__BaseUrl` | `http://127.0.0.1:6501` in Development | PostgREST's address (`http://api:3000` in compose) |
+| `PostgRest__Timeout` | `00:00:30` | per request |
+| `Auth__SignInAttemptsPerMinute` | `10` | password guessing guard |
+
+### Styles
+
+`src/PgRestWms.Web/Styles/app.css` -> `wwwroot/app.css` (committed, so Docker and CI need no Tailwind):
+
+```bash
+./scripts/tailwind.sh            # downloads the standalone Tailwind CLI v4 once into .tools/ (checksum verified), builds
+./scripts/tailwind.sh --watch    # rebuild while editing .razor files
+```
+
+Once the CLI is in `.tools/`, `dotnet build` rebuilds the CSS when a `.razor` file or `app.css` changes.
+
+### Screenshots
+
+`docs/screens/` comes from the running stack with the demo data; the script also checks the two database errors in a
+real browser (Node, Google Chrome and a `node_modules` with Playwright):
+
+```bash
+PLAYWRIGHT_NODE_MODULES=/path/to/node_modules ./scripts/e2e/screens.sh
+```
+
 ## Develop
 
 ```bash
@@ -93,8 +141,9 @@ dotnet test --solution PgRestWms.slnx --filter-class '*.StockTests'  # one class
 dotnet csharpier format .
 ```
 
-API tests (`tests/PgRestWms.Tests/Api/`) start PostgreSQL 18.6 with `db/init` and PostgREST in Docker, with random
-secrets, and call the API over HTTP.
+Tests start PostgreSQL 18.6 with `db/init` and PostgREST in Docker (Testcontainers), with random secrets:
+`Api/` calls the API over HTTP; `Web/` runs the Blazor host in memory against it (sign-in, cookie content, lists
+through the URL) and renders the forms with bUnit to check the database's messages next to the fields.
 
 Run the Blazor host outside Docker: `./infrastructure/start.sh -s web`, then
 `PostgRest__BaseUrl=http://127.0.0.1:6501 dotnet run --project src/PgRestWms.Web`.
@@ -107,10 +156,11 @@ Git hooks (Husky.Net): pre-commit - `csharpier check`, build; pre-push - build, 
 | Path | What |
 |---|---|
 | `db/init/` | roles, schemas, tables, `api` views and functions (run in name order on an empty volume) |
-| `src/PgRestWms.Web/` | Blazor host |
+| `src/PgRestWms.Web/` | Blazor host: `PostgRest/` client, `Auth/` sign-in, `Components/` pages, forms and UI |
 | `tests/PgRestWms.Tests/` | tests |
 | `infrastructure/` | `docker-compose.yml`, `.env-sample`, `start.sh` |
-| `docs/` | requirements, domain |
+| `scripts/` | `tailwind.sh`, `inspect-code.sh`, `e2e/screens.sh` |
+| `docs/` | requirements, domain, screenshots |
 
 ## License
 

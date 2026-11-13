@@ -1,0 +1,8 @@
+@using System.Globalization
+@* A moment in UTC, short and sortable (the server does not know the browser's time zone). *@
+<time datetime="@Value.ToString("O")" title="@Value.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) UTC">@Value.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</time>
+
+@code {
+    [Parameter]
+    public DateTimeOffset Value { get; set; }
+}

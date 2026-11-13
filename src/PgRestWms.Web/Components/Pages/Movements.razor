@@ -1,0 +1,87 @@
+@page "/movements"
+@inherits ListPage<Movement>
+
+<PageTitle>Movements · wms.pg-rest</PageTitle>
+
+<PageHeader Title="Movements" Subtitle="Every receipt and issue, newest first. Append-only." />
+
+<form class="mb-3 flex flex-wrap items-center gap-2" @onsubmit="ApplySearch">
+    <input name="q" class="input w-72" placeholder="Search SKU, product or note" aria-label="Search" @bind="SearchText" />
+    <select name="kind" class="input w-40" aria-label="Kind" value="@KindParameter" @onchange="e => SetFilter(KindFilter, e.Value as string)">
+        <option value="">All kinds</option>
+        <option value="@MovementKinds.Receipt">Receipts</option>
+        <option value="@MovementKinds.Issue">Issues</option>
+    </select>
+    <select name="warehouse" class="input w-56" aria-label="Warehouse" value="@WarehouseParameter" @onchange="e => SetFilter(WarehouseFilter, e.Value as string)">
+        <option value="">All warehouses</option>
+        @foreach (var w in _warehouses)
+        {
+            <option value="@w.Code">@w.Code · @w.Name</option>
+        }
+    </select>
+    <button type="submit" class="btn">Search</button>
+</form>
+
+<Alert Message="@Error" />
+
+@if (Rows is { } rows)
+{
+    <div class="overflow-x-auto rounded-lg border border-line bg-surface">
+        <table class="data-table" data-testid="movements">
+            <thead>
+                <tr>
+                    <SortHeader Label="When" Href="@SortHref("created_at")" Active="@(Sort == "created_at")" Descending="Descending" />
+                    <th>Kind</th>
+                    <SortHeader Label="SKU" Href="@SortHref("sku")" Active="@(Sort == "sku")" Descending="Descending" />
+                    <th>Product</th>
+                    <SortHeader Label="Warehouse" Href="@SortHref("warehouse_code")" Active="@(Sort == "warehouse_code")" Descending="Descending" />
+                    <SortHeader Label="Quantity" Href="@SortHref("quantity")" Active="@(Sort == "quantity")" Descending="Descending" Numeric="true" />
+                    <th>Note</th>
+                    <SortHeader Label="By" Href="@SortHref("created_by")" Active="@(Sort == "created_by")" Descending="Descending" />
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var m in rows.Items)
+                {
+                    <tr data-row="@m.Sku">
+                        <td class="whitespace-nowrap text-muted"><LocalTime Value="m.CreatedAt" /></td>
+                        <td><KindBadge Kind="@m.Kind" /></td>
+                        <td class="code" data-col="sku">@m.Sku</td>
+                        <td>@m.ProductName</td>
+                        <td class="code">@m.WarehouseCode</td>
+                        <td class="num" data-col="quantity">@(m.Kind == MovementKinds.Issue ? "−" : "+")<Quantity Value="m.Quantity" Unit="@m.Unit" /></td>
+                        <td class="max-w-64 truncate text-muted" title="@m.Note">@m.Note</td>
+                        <td class="font-mono text-xs">@m.CreatedBy</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <Pager Page="PageNumber" Size="PageSize" Total="rows.Total" PageHref="PageHref" SizeHref="SizeHref" />
+}
+
+@code {
+    private const string KindFilter = "kind";
+    private const string WarehouseFilter = "warehouse";
+    private IReadOnlyList<Warehouse> _warehouses = [];
+
+    [SupplyParameterFromQuery(Name = KindFilter)]
+    public string? KindParameter { get; set; }
+
+    [SupplyParameterFromQuery(Name = WarehouseFilter)]
+    public string? WarehouseParameter { get; set; }
+
+    protected override string Resource => "movements";
+    protected override IReadOnlyList<string> SortColumns { get; } = ["created_at", "sku", "warehouse_code", "quantity", "created_by"];
+    protected override string TieBreaker => "id";
+    protected override bool DefaultDescending => true;
+
+    protected override void Filter(PostgRestQuery query) =>
+        query
+            .Search(SearchParameter, "sku", "product_name", "note")
+            .Eq("kind", KindParameter is MovementKinds.Receipt or MovementKinds.Issue ? KindParameter : null)
+            .Eq("warehouse_code", WarehouseParameter);
+
+    protected override async Task OnInitializedAsync() =>
+        await RunAsync(async () => _warehouses = await Api.AllAsync<Warehouse>("warehouses?order=code"));
+}

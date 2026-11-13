@@ -1,0 +1,36 @@
+@page "/book"
+@inherits ApiPage
+
+<PageTitle>Receive / Issue · wms.pg-rest</PageTitle>
+
+<PageHeader Title="Receive / Issue" Subtitle="The only way to change stock. Each booking writes a movement; an issue never takes stock below zero." />
+
+<Alert Message="@Error" />
+
+@if (_loaded)
+{
+    <BookingForm Products="_products" Warehouses="_warehouses" Kind="@KindParameter" ProductId="ProductParameter" WarehouseId="WarehouseParameter" />
+}
+
+@code {
+    private IReadOnlyList<Product> _products = [];
+    private IReadOnlyList<Warehouse> _warehouses = [];
+    private bool _loaded;
+
+    [SupplyParameterFromQuery(Name = "kind")]
+    public string? KindParameter { get; set; }
+
+    [SupplyParameterFromQuery(Name = "product")]
+    public Guid? ProductParameter { get; set; }
+
+    [SupplyParameterFromQuery(Name = "warehouse")]
+    public Guid? WarehouseParameter { get; set; }
+
+    protected override async Task OnInitializedAsync() =>
+        _loaded = await RunAsync(async () =>
+        {
+            // A small warehouse: the whole list fits a select. A large one would need a search box (rpc or ilike).
+            _products = await Api.AllAsync<Product>("products?order=sku&limit=1000");
+            _warehouses = await Api.AllAsync<Warehouse>("warehouses?order=code&limit=200");
+        });
+}

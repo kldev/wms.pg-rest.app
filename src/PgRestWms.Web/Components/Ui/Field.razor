@@ -1,0 +1,26 @@
+@* A label, an input (ChildContent, with id = For) and the database's message for this field. *@
+<div class="@Class">
+    <label for="@For" class="label mb-1.5">@Label</label>
+    @ChildContent
+    @if (!string.IsNullOrEmpty(Error))
+    {
+        <p class="field-error" id="@($"{For}-error")" data-field-error="@For">@Error</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string For { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = "";
+
+    [Parameter]
+    public string? Error { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

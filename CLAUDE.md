@@ -14,4 +14,7 @@ Rules:
   no private addresses (LAN IPs, internal host names). `.instructions/` is local and git-ignored.
 - Push only when the owner asks. Conventional commits, small commits that build.
 - `TreatWarningsAsErrors`, central package versions, CSharpier, `scripts/inspect-code.sh` must report nothing.
+- Styles: Tailwind v4 from `src/PgRestWms.Web/Styles/app.css`; `wwwroot/app.css` is generated and committed -
+  rebuild with `./scripts/tailwind.sh` after changing markup classes. Keep class names whole in `.razor` files.
+- The JWT never goes to the browser: it lives in `SessionTokens` (server memory), the cookie holds a session id.
 - Spec-driven: each spec (S01...) has acceptance criteria in the owner's SDD project; `PRODUCT.md` mirrors it.

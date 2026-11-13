@@ -1,0 +1,15 @@
+@if (!string.IsNullOrEmpty(Message))
+{
+    <div role="@(Success ? "status" : "alert")" data-testid="@(Success ? "success" : "error")"
+         class="mb-4 rounded-md border px-3 py-2 text-sm @(Success ? "border-accent/30 bg-accent-soft text-accent-strong" : "border-danger/30 bg-danger-soft text-danger")">
+        @Message
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public bool Success { get; set; }
+}

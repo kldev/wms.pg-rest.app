@@ -25,6 +25,8 @@
 | D12 | Spec-driven development: SDD project in the owner's local wiki, `PRODUCT.md` mirrors it, one agent prompt per spec in `.instructions/` (local, git-ignored). |
 | D13 | Ports on `127.0.0.1`: web 6500, PostgREST 6501, PostgreSQL 6502 (configurable in `.env`). |
 | D14 | Token lifetime from `.env` (`JWT_LIFETIME`, default 8 h), passed to the database with the secret. |
+| D16 | The PostgREST client in the Blazor host is written by hand (no Kiota/NSwag): PostgREST's OpenAPI 2.0 does not describe filters, `Prefer` or `Content-Range`, which the lists depend on. (2026-11-13, S03) |
+| D17 | The JWT is kept in the host's memory under a random session id; the cookie carries the id and the username only. A host restart ends the sessions. (2026-11-13, S03) |
 | D15 | Repository: `kldev/wms.pg-rest.app` on GitHub, public. The surrounding local repository ignores the directory. |
 
 ## Requirements

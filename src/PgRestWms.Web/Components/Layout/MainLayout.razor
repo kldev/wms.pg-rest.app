@@ -1,9 +1,50 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-@Body
+<div class="min-h-svh lg:grid lg:grid-cols-[13.5rem_minmax(0,1fr)]">
+    <aside class="flex flex-col border-b border-line bg-surface lg:sticky lg:top-0 lg:h-svh lg:border-r lg:border-b-0">
+        <div class="flex items-center gap-2.5 px-5 pt-5 pb-4">
+            <span class="grid size-8 place-items-center rounded-md bg-ink font-mono text-xs font-bold text-paper" aria-hidden="true">W</span>
+            <div class="leading-tight">
+                <div class="text-sm font-semibold">wms.pg-rest</div>
+                <div class="text-xs text-muted">PostgREST + Blazor</div>
+            </div>
+        </div>
+        <nav class="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible" aria-label="Main">
+            @foreach (var (href, label, match) in Items)
+            {
+                <NavLink href="@href" Match="match" ActiveClass="!bg-ink !text-paper"
+                         class="rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap text-muted hover:bg-paper hover:text-ink">@label</NavLink>
+            }
+        </nav>
+        <div class="mt-auto flex items-center justify-between gap-3 border-t border-line px-5 py-2 lg:block lg:py-4">
+            <AuthorizeView>
+                <div class="text-xs text-muted">Signed in as</div>
+                <div class="truncate font-mono text-sm font-semibold" data-testid="username">@context.User.Identity?.Name</div>
+            </AuthorizeView>
+            <form method="post" action="auth/logout" data-enhance="false" class="lg:mt-3">
+                <button type="submit" class="btn btn-ghost h-8 px-0">Sign out</button>
+            </form>
+        </div>
+    </aside>
+
+    <main class="min-w-0 px-4 py-6 sm:px-8 lg:py-8">
+        @Body
+    </main>
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
+    <span class="dismiss">✕</span>
 </div>
+
+@code {
+    private static readonly (string Href, string Label, NavLinkMatch Match)[] Items =
+    [
+        ("", "Stock", NavLinkMatch.All),
+        ("book", "Receive / Issue", NavLinkMatch.Prefix),
+        ("movements", "Movements", NavLinkMatch.Prefix),
+        ("products", "Products", NavLinkMatch.Prefix),
+        ("warehouses", "Warehouses", NavLinkMatch.Prefix),
+    ];
+}

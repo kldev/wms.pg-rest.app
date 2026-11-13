@@ -1,0 +1,81 @@
+@page "/warehouses"
+@inherits ListPage<Warehouse>
+
+<PageTitle>Warehouses · wms.pg-rest</PageTitle>
+
+<PageHeader Title="Warehouses" Subtitle="Code is unique and stored upper-case.">
+    <Actions>
+        <button type="button" class="btn btn-primary" @onclick="() => Edit(null)">New warehouse</button>
+    </Actions>
+</PageHeader>
+
+<form class="mb-3 flex flex-wrap items-center gap-2" @onsubmit="ApplySearch">
+    <input name="q" class="input w-72" placeholder="Search code or name" aria-label="Search" @bind="SearchText" />
+    <button type="submit" class="btn">Search</button>
+</form>
+
+<Alert Message="@Error" />
+<Alert Message="@_saved" Success="true" />
+
+@if (Rows is { } rows)
+{
+    <div class="overflow-x-auto rounded-lg border border-line bg-surface">
+        <table class="data-table" data-testid="warehouses">
+            <thead>
+                <tr>
+                    <SortHeader Label="Code" Href="@SortHref("code")" Active="@(Sort == "code")" Descending="Descending" />
+                    <SortHeader Label="Name" Href="@SortHref("name")" Active="@(Sort == "name")" Descending="Descending" />
+                    <SortHeader Label="Changed" Href="@SortHref("updated_at")" Active="@(Sort == "updated_at")" Descending="Descending" />
+                    <th><span class="sr-only">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var w in rows.Items)
+                {
+                    <tr data-row="@w.Code">
+                        <td class="code" data-col="code">@w.Code</td>
+                        <td>@w.Name</td>
+                        <td class="whitespace-nowrap text-muted"><LocalTime Value="w.UpdatedAt" /></td>
+                        <td class="text-right whitespace-nowrap">
+                            <a class="btn btn-ghost h-7 px-2" href="@($"/?warehouse={Uri.EscapeDataString(w.Code)}")">Stock</a>
+                            <button type="button" class="btn btn-ghost h-7 px-2" @onclick="() => Edit(w)">Edit</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <Pager Page="PageNumber" Size="PageSize" Total="rows.Total" PageHref="PageHref" SizeHref="SizeHref" />
+}
+
+<Modal Open="_editing" Title="@(_selected is null ? "New warehouse" : $"Edit {_selected.Code}")" OnClose="Close">
+    <WarehouseEditor Existing="_selected" OnSaved="SavedAsync" OnCancel="Close" />
+</Modal>
+
+@code {
+    private bool _editing;
+    private Warehouse? _selected;
+    private string? _saved;
+
+    protected override string Resource => "warehouses";
+    protected override IReadOnlyList<string> SortColumns { get; } = ["code", "name", "updated_at"];
+    protected override string TieBreaker => "id";
+
+    protected override void Filter(PostgRestQuery query) => query.Search(SearchParameter, "code", "name");
+
+    private void Edit(Warehouse? warehouse)
+    {
+        _selected = warehouse;
+        _saved = null;
+        _editing = true;
+    }
+
+    private void Close() => _editing = false;
+
+    private async Task SavedAsync()
+    {
+        _saved = _selected is null ? "Warehouse created." : $"{_selected.Code} saved.";
+        _editing = false;
+        await LoadAsync();
+    }
+}

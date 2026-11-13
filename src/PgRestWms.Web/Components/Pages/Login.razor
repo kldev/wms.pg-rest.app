@@ -1,0 +1,49 @@
+@page "/login"
+@layout LoginLayout
+@attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
+
+<PageTitle>Sign in · wms.pg-rest</PageTitle>
+
+<div class="w-full max-w-sm">
+    <div class="mb-8 flex items-center gap-3">
+        <span class="grid size-10 place-items-center rounded-md bg-ink font-mono text-sm font-bold text-paper" aria-hidden="true">W</span>
+        <div>
+            <h1 class="text-2xl font-semibold tracking-tight">Sign in</h1>
+            <p class="text-sm text-muted">Mini warehouse on PostgreSQL, PostgREST and Blazor.</p>
+        </div>
+    </div>
+
+    @* A plain form: /auth/login asks PostgREST's rpc/login, keeps the token on the server and writes the cookie. *@
+    <form method="post" action="auth/login" data-enhance="false" class="space-y-4 rounded-lg border border-line bg-surface p-5">
+        <input type="hidden" name="returnUrl" value="@Auth.AuthEndpoints.LocalUrl(ReturnUrl)" />
+        <Alert Message="@Message" />
+        <Field For="username" Label="Username">
+            <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus class="input h-10" />
+        </Field>
+        <Field For="password" Label="Password">
+            <input id="password" name="password" type="password" autocomplete="current-password" required class="input h-10" />
+        </Field>
+        <button type="submit" class="btn btn-primary h-10 w-full">Sign in</button>
+    </form>
+    <p class="mt-4 text-xs text-muted">Local stack: the user and password are <span class="font-mono">APP_USERNAME</span> and <span class="font-mono">APP_PASSWORD</span> in <span class="font-mono">infrastructure/.env</span>.</p>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? Error { get; set; }
+
+    private string? Message =>
+        Error switch
+        {
+            null or "" => null,
+            "invalid" => "Invalid username or password.",
+            "expired" => "Your session has ended. Sign in again.",
+            "throttled" => "Too many attempts. Wait a minute and try again.",
+            "unavailable" => "PostgREST is not reachable. Is the api container running?",
+            _ => "Sign-in failed. Try again.",
+        };
+}

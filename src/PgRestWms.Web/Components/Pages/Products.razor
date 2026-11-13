@@ -1,0 +1,92 @@
+@page "/products"
+@inherits ListPage<Product>
+
+<PageTitle>Products · wms.pg-rest</PageTitle>
+
+<PageHeader Title="Products" Subtitle="SKU is unique and stored upper-case. Products are never deleted.">
+    <Actions>
+        <button type="button" class="btn btn-primary" @onclick="() => Edit(null)">New product</button>
+    </Actions>
+</PageHeader>
+
+<form class="mb-3 flex flex-wrap items-center gap-2" @onsubmit="ApplySearch">
+    <input name="q" class="input w-72" placeholder="Search SKU or name" aria-label="Search" @bind="SearchText" />
+    <select name="unit" class="input w-36" aria-label="Unit" value="@UnitParameter" @onchange="e => SetFilter(UnitFilter, e.Value as string)">
+        <option value="">All units</option>
+        @foreach (var unit in Units.All)
+        {
+            <option value="@unit">@unit</option>
+        }
+    </select>
+    <button type="submit" class="btn">Search</button>
+</form>
+
+<Alert Message="@Error" />
+<Alert Message="@_saved" Success="true" />
+
+@if (Rows is { } rows)
+{
+    <div class="overflow-x-auto rounded-lg border border-line bg-surface">
+        <table class="data-table" data-testid="products">
+            <thead>
+                <tr>
+                    <SortHeader Label="SKU" Href="@SortHref("sku")" Active="@(Sort == "sku")" Descending="Descending" />
+                    <SortHeader Label="Name" Href="@SortHref("name")" Active="@(Sort == "name")" Descending="Descending" />
+                    <SortHeader Label="Unit" Href="@SortHref("unit")" Active="@(Sort == "unit")" Descending="Descending" />
+                    <SortHeader Label="Changed" Href="@SortHref("updated_at")" Active="@(Sort == "updated_at")" Descending="Descending" />
+                    <th><span class="sr-only">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in rows.Items)
+                {
+                    <tr data-row="@p.Sku">
+                        <td class="code" data-col="sku">@p.Sku</td>
+                        <td>@p.Name</td>
+                        <td class="font-mono text-xs">@p.Unit</td>
+                        <td class="whitespace-nowrap text-muted"><LocalTime Value="p.UpdatedAt" /></td>
+                        <td class="text-right"><button type="button" class="btn btn-ghost h-7 px-2" @onclick="() => Edit(p)">Edit</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <Pager Page="PageNumber" Size="PageSize" Total="rows.Total" PageHref="PageHref" SizeHref="SizeHref" />
+}
+
+<Modal Open="_editing" Title="@(_selected is null ? "New product" : $"Edit {_selected.Sku}")" OnClose="Close">
+    <ProductEditor Existing="_selected" OnSaved="SavedAsync" OnCancel="Close" />
+</Modal>
+
+@code {
+    private const string UnitFilter = "unit";
+    private bool _editing;
+    private Product? _selected;
+    private string? _saved;
+
+    [SupplyParameterFromQuery(Name = UnitFilter)]
+    public string? UnitParameter { get; set; }
+
+    protected override string Resource => "products";
+    protected override IReadOnlyList<string> SortColumns { get; } = ["sku", "name", "unit", "updated_at"];
+    protected override string TieBreaker => "id";
+
+    protected override void Filter(PostgRestQuery query) =>
+        query.Search(SearchParameter, "sku", "name").Eq("unit", Units.All.Contains(UnitParameter) ? UnitParameter : null);
+
+    private void Edit(Product? product)
+    {
+        _selected = product;
+        _saved = null;
+        _editing = true;
+    }
+
+    private void Close() => _editing = false;
+
+    private async Task SavedAsync()
+    {
+        _saved = _selected is null ? "Product created." : $"{_selected.Sku} saved.";
+        _editing = false;
+        await LoadAsync();
+    }
+}

@@ -1,0 +1,101 @@
+/* Tailwind CSS v4 - built by scripts/tailwind.sh into wwwroot/app.css (committed). Only the Razor components are
+   scanned for classes; keep class names whole in markup (no string building in C#). */
+@import "tailwindcss" source(none);
+@source "../Components";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* Paper and ink: a working tool, not a dashboard. One accent (signal green) for actions and receipts, amber for
+     issues, red only for errors. */
+  --color-paper: #f6f5f1;
+  --color-surface: #ffffff;
+  --color-ink: #1b1d1c;
+  --color-muted: #5f6461;
+  --color-line: #dedbd3;
+  --color-line-strong: #c4c0b5;
+  --color-accent: #1f6f4a;
+  --color-accent-strong: #17583a;
+  --color-accent-soft: #e3efe7;
+  --color-issue: #9a5b05;
+  --color-issue-soft: #fbefd9;
+  --color-danger: #b42318;
+  --color-danger-soft: #fdebe9;
+}
+
+@layer base {
+  html {
+    @apply bg-paper text-ink antialiased;
+    font-feature-settings: "tnum" 1;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+  h1:focus {
+    outline: none;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border border-line-strong
+      bg-surface px-3.5 text-sm font-medium text-ink transition-colors select-none
+      hover:border-ink disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply border-accent bg-accent text-white hover:border-accent-strong hover:bg-accent-strong;
+  }
+  .btn-ghost {
+    @apply border-transparent bg-transparent text-muted hover:border-transparent hover:text-ink;
+  }
+  .label {
+    @apply block text-xs font-semibold tracking-wide text-muted uppercase;
+  }
+  .input {
+    @apply block h-9 w-full rounded-md border border-line-strong bg-surface px-2.5 text-sm text-ink
+      placeholder:text-muted/70 focus:border-accent focus:outline-none;
+  }
+  .input[aria-invalid="true"] {
+    @apply border-danger;
+  }
+  .field-error {
+    @apply mt-1 text-sm text-danger;
+  }
+  .data-table {
+    @apply w-full border-collapse text-sm;
+  }
+  .data-table th {
+    @apply border-b border-line-strong px-3 py-2 text-left text-xs font-semibold tracking-wide whitespace-nowrap
+      text-muted uppercase;
+  }
+  .data-table td {
+    @apply border-b border-line px-3 py-2 align-middle;
+  }
+  .data-table tbody tr:hover {
+    @apply bg-paper;
+  }
+  .num {
+    @apply text-right font-mono tabular-nums;
+  }
+  .code {
+    @apply font-mono text-[13px] font-semibold tracking-tight;
+  }
+}
+
+/* Blazor's own error bar and boundary. */
+#blazor-error-ui {
+  @apply fixed inset-x-0 bottom-0 z-50 hidden bg-danger px-4 py-3 text-sm text-white;
+}
+#blazor-error-ui .reload {
+  @apply ml-2 font-semibold underline;
+}
+#blazor-error-ui .dismiss {
+  @apply absolute top-2.5 right-4 cursor-pointer;
+}
+.blazor-error-boundary {
+  @apply rounded-md bg-danger-soft p-4 text-danger;
+}
+.blazor-error-boundary::after {
+  content: "An error has occurred.";
+}

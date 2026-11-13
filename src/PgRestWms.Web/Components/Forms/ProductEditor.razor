@@ -1,0 +1,86 @@
+@* Create or edit a product. The database checks everything (unique SKU, format, unit); its answer lands on the field. *@
+@inject PostgRestClient Api
+@inject NavigationManager Navigation
+
+<form @onsubmit="SaveAsync" class="space-y-4" data-testid="product-form">
+    <Alert Message="@_errors.Form" />
+    <Field For="sku" Label="SKU" Error="@_errors["sku"]">
+        <input id="sku" class="input code uppercase" maxlength="32" autocomplete="off" spellcheck="false" @bind="_sku" aria-invalid="@(_errors["sku"] is not null ? "true" : null)" />
+    </Field>
+    <Field For="name" Label="Name" Error="@_errors["name"]">
+        <input id="name" class="input" maxlength="200" @bind="_name" aria-invalid="@(_errors["name"] is not null ? "true" : null)" />
+    </Field>
+    <Field For="unit" Label="Unit" Error="@_errors["unit"]">
+        <select id="unit" class="input w-32" @bind="_unit">
+            @foreach (var unit in Units.All)
+            {
+                <option value="@unit">@unit</option>
+            }
+        </select>
+    </Field>
+    <div class="flex justify-end gap-2 pt-1">
+        <button type="button" class="btn" @onclick="OnCancel">Cancel</button>
+        <button type="submit" class="btn btn-primary" disabled="@_saving">@(Existing is null ? "Create product" : "Save")</button>
+    </div>
+</form>
+
+@code {
+    private readonly FormErrors _errors = new("sku", "name", "unit");
+    private string _sku = "";
+    private string _name = "";
+    private string _unit = "pcs";
+    private bool _saving;
+
+    /// <summary>The product to edit; null creates a new one.</summary>
+    [Parameter]
+    public Product? Existing { get; set; }
+
+    [Parameter]
+    public EventCallback OnSaved { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        _sku = Existing?.Sku ?? "";
+        _name = Existing?.Name ?? "";
+        _unit = Existing?.Unit ?? "pcs";
+        _errors.Clear();
+    }
+
+    private async Task SaveAsync()
+    {
+        _errors.Clear();
+        _saving = true;
+        try
+        {
+            var row = new { sku = _sku, name = _name, unit = _unit };
+            if (Existing is null)
+            {
+                await Api.CreateAsync<Product>("products", row);
+            }
+            else
+            {
+                await Api.UpdateAsync("products", Existing.Id, row);
+            }
+            await OnSaved.InvokeAsync();
+        }
+        catch (PostgRestException e) when (e.SessionExpired)
+        {
+            Navigation.NavigateTo("auth/session-expired", forceLoad: true);
+        }
+        catch (PostgRestException e)
+        {
+            _errors.Show(e);
+        }
+        catch (HttpRequestException)
+        {
+            _errors.ShowUnreachable();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

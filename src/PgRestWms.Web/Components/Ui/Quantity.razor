@@ -1,0 +1,14 @@
+@* A quantity without trailing zeros (380, 214.5) and its unit. *@
+<span class="num">@Value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)</span>
+@if (Unit is not null)
+{
+    <span class="ml-1 text-xs text-muted">@Unit</span>
+}
+
+@code {
+    [Parameter]
+    public decimal Value { get; set; }
+
+    [Parameter]
+    public string? Unit { get; set; }
+}

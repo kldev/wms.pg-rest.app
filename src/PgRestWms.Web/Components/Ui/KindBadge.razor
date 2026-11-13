@@ -1,0 +1,13 @@
+@if (Kind == MovementKinds.Receipt)
+{
+    <span class="inline-flex rounded bg-accent-soft px-1.5 py-0.5 text-xs font-semibold text-accent-strong">Receipt</span>
+}
+else
+{
+    <span class="inline-flex rounded bg-issue-soft px-1.5 py-0.5 text-xs font-semibold text-issue">Issue</span>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string Kind { get; set; } = "";
+}

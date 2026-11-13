@@ -1,0 +1,150 @@
+@* Receive or issue: calls rpc/receive or rpc/issue. Not enough stock, a bad quantity or an unknown product come back
+   from the database and are shown next to the field. *@
+@using System.Globalization
+@inject PostgRestClient Api
+@inject NavigationManager Navigation
+
+<form @onsubmit="SubmitAsync" class="max-w-xl space-y-4 rounded-lg border border-line bg-surface p-5" data-testid="booking-form">
+    <div class="inline-flex rounded-md border border-line-strong p-0.5" role="radiogroup" aria-label="Kind">
+        <button type="button" role="radio" aria-checked="@(_kind == MovementKinds.Receipt ? "true" : "false")" @onclick="() => SetKind(MovementKinds.Receipt)"
+                class="rounded px-3 py-1.5 text-sm font-medium @(_kind == MovementKinds.Receipt ? "bg-accent text-white" : "text-muted hover:text-ink")">Receive</button>
+        <button type="button" role="radio" aria-checked="@(_kind == MovementKinds.Issue ? "true" : "false")" @onclick="() => SetKind(MovementKinds.Issue)"
+                class="rounded px-3 py-1.5 text-sm font-medium @(_kind == MovementKinds.Issue ? "bg-issue text-white" : "text-muted hover:text-ink")">Issue</button>
+    </div>
+
+    <Alert Message="@_errors.Form" />
+    <Alert Message="@_done" Success="true" />
+
+    <Field For="product_id" Label="Product" Error="@_errors["product_id"]">
+        <select id="product_id" class="input" @bind="_productId">
+            <option value="">Choose a product…</option>
+            @foreach (var p in Products)
+            {
+                <option value="@p.Id">@p.Sku · @p.Name</option>
+            }
+        </select>
+    </Field>
+    <Field For="warehouse_id" Label="Warehouse" Error="@_errors["warehouse_id"]">
+        <select id="warehouse_id" class="input" @bind="_warehouseId">
+            <option value="">Choose a warehouse…</option>
+            @foreach (var w in Warehouses)
+            {
+                <option value="@w.Id">@w.Code · @w.Name</option>
+            }
+        </select>
+    </Field>
+    <div class="grid gap-4 sm:grid-cols-[10rem_1fr]">
+        <Field For="quantity" Label="@QuantityLabel" Error="@_errors["quantity"]">
+            <input id="quantity" class="input num" inputmode="decimal" autocomplete="off" @bind="_quantity" aria-invalid="@(_errors["quantity"] is not null ? "true" : null)" />
+        </Field>
+        <Field For="note" Label="Note (optional)" Error="@_errors["note"]">
+            <input id="note" class="input" maxlength="500" @bind="_note" />
+        </Field>
+    </div>
+    <div class="flex justify-end">
+        <button type="submit" class="btn @(_kind == MovementKinds.Issue ? "border-issue bg-issue text-white hover:bg-issue/90" : "btn-primary")" disabled="@_saving">
+            @(_kind == MovementKinds.Issue ? "Issue" : "Receive")
+        </button>
+    </div>
+</form>
+
+@code {
+    private readonly FormErrors _errors = new("product_id", "warehouse_id", "quantity", "note");
+    private string _kind = MovementKinds.Receipt;
+    private string _productId = "";
+    private string _warehouseId = "";
+    private string _quantity = "";
+    private string _note = "";
+    private string? _done;
+    private bool _saving;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<Product> Products { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<Warehouse> Warehouses { get; set; } = [];
+
+    [Parameter]
+    public string? Kind { get; set; }
+
+    [Parameter]
+    public Guid? ProductId { get; set; }
+
+    [Parameter]
+    public Guid? WarehouseId { get; set; }
+
+    private string QuantityLabel => SelectedProduct is { } product ? $"Quantity ({product.Unit})" : "Quantity";
+
+    private Product? SelectedProduct => Products.FirstOrDefault(p => p.Id.ToString() == _productId);
+
+    protected override void OnParametersSet()
+    {
+        _kind = Kind == MovementKinds.Issue ? MovementKinds.Issue : MovementKinds.Receipt;
+        _productId = ProductId?.ToString() ?? _productId;
+        _warehouseId = WarehouseId?.ToString() ?? _warehouseId;
+    }
+
+    private void SetKind(string kind)
+    {
+        _kind = kind;
+        _errors.Clear();
+        _done = null;
+    }
+
+    private async Task SubmitAsync()
+    {
+        _errors.Clear();
+        _done = null;
+        if (!Guid.TryParse(_productId, out var productId))
+        {
+            _errors.Set("product_id", "Choose a product.");
+        }
+        if (!Guid.TryParse(_warehouseId, out var warehouseId))
+        {
+            _errors.Set("warehouse_id", "Choose a warehouse.");
+        }
+        // Only the number format is checked here; whether the quantity is allowed is the database's call.
+        if (!decimal.TryParse(_quantity.Replace(',', '.'), NumberStyles.Number, CultureInfo.InvariantCulture, out var quantity))
+        {
+            _errors.Set("quantity", "Enter a number, e.g. 12 or 2.5.");
+        }
+        if (_errors.Any)
+        {
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var change = await Api.RpcAsync<StockChange>(
+                _kind == MovementKinds.Issue ? "issue" : "receive",
+                new { product_id = productId, warehouse_id = warehouseId, quantity, note = string.IsNullOrWhiteSpace(_note) ? null : _note }
+            );
+            var product = SelectedProduct;
+            var warehouse = Warehouses.FirstOrDefault(w => w.Id == warehouseId);
+            var amount = quantity.ToString("0.###", CultureInfo.InvariantCulture);
+            var now = change.Quantity.ToString("0.###", CultureInfo.InvariantCulture);
+            _done = _kind == MovementKinds.Issue
+                ? $"Issued {amount} {product?.Unit} of {product?.Sku} from {warehouse?.Code}. Stock now {now}."
+                : $"Received {amount} {product?.Unit} of {product?.Sku} into {warehouse?.Code}. Stock now {now}.";
+            _quantity = "";
+            _note = "";
+        }
+        catch (PostgRestException e) when (e.SessionExpired)
+        {
+            Navigation.NavigateTo("auth/session-expired", forceLoad: true);
+        }
+        catch (PostgRestException e)
+        {
+            _errors.Show(e);
+        }
+        catch (HttpRequestException)
+        {
+            _errors.ShowUnreachable();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

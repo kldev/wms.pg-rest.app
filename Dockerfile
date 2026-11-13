@@ -18,7 +18,8 @@ RUN dotnet publish src/PgRestWms.Web/PgRestWms.Web.csproj \
     --configuration $CONFIGURATION \
     --no-restore \
     --output /app/publish \
-    /p:UseAppHost=false
+    /p:UseAppHost=false \
+    /p:SkipTailwind=true
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 
