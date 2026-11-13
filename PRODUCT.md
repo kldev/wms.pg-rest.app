@@ -6,7 +6,7 @@ with a **Blazor .NET 10** front on top. The rules (stock never below zero, uniqu
 database; PostgREST exposes them as REST + OpenAPI; Blazor only displays and calls them. Requirements:
 `docs/requirements/requirements.md`, domain: `docs/domain.md`. This file mirrors the project's SDD record.
 
-State: **Shape** - specs written, no code yet.
+State: **MVP** - S01 done (skeleton and compose stack); S02 next.
 
 ## What it proves
 
@@ -55,6 +55,10 @@ Not yet:
 
 ## State
 
-Works today: nothing yet (Shape).
+Works today:
+- S01: `./infrastructure/start.sh` from a fresh clone brings up PostgreSQL 18.6, PostgREST v16.5 (connects as
+  `authenticator`, serves the empty `api` schema and its OpenAPI) and the Blazor host (`/health`), all healthy, ports on
+  127.0.0.1 only; `--init-env` generates random secrets;
+- build with `TreatWarningsAsErrors`, CSharpier and JetBrains inspection clean, Husky.Net hooks, 1 test.
 
-Next: S01 skeleton and compose, S02 database and API, S03 Blazor front, S04 publication.
+Next: S02 database and API, S03 Blazor front, S04 publication.
