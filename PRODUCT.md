@@ -6,7 +6,7 @@ with a **Blazor .NET 10** front on top. The rules (stock never below zero, uniqu
 database; PostgREST exposes them as REST + OpenAPI; Blazor only displays and calls them. Requirements:
 `docs/requirements/requirements.md`, domain: `docs/domain.md`. This file mirrors the project's SDD record.
 
-State: **MVP** - S01 (skeleton, compose) and S02 (database and API through PostgREST) done; S03 next.
+State: **MVP done** - S01 (skeleton, compose), S02 (database and API through PostgREST) and S03 (Blazor front) done; S04 (publication) waits for the owner.
 
 ## What it proves
 
@@ -52,6 +52,8 @@ Not yet:
 | D13 | Ports 6500 web, 6501 PostgREST, 6502 PostgreSQL on 127.0.0.1 | free next to the author's other projects | - |
 | D14 | Token lifetime from `.env` (`JWT_LIFETIME`, default 8 h) | owner's choice | - |
 | D15 | Public repository `kldev/wms.pg-rest.app` | owner's choice | - |
+| D16 | Hand-written PostgREST client (no Kiota/NSwag) | OpenAPI 2.0 of PostgREST lacks filters, `Prefer`, `Content-Range` | PostgREST publishes OpenAPI 3 with them |
+| D17 | JWT in the host's memory, session id in the cookie | the token never reaches the browser | more than one web instance |
 
 ## State
 
@@ -63,7 +65,12 @@ Works today:
   lifetime from `.env`), products and warehouses (create, edit, filter, sort, page; no delete), read-only stock and
   movements, `rpc/receive` and `rpc/issue` as the only way to change stock (row lock; 409 when not enough); everything
   owned by `wms_owner`, `web_anon` may only sign in; optional invented demo data;
+- S03: the Blazor front (Interactive Server, prerendered; Tailwind v4 standalone CLI + own components) - sign-in,
+  stock, receive/issue, movements, products, warehouses; filters, sort and page in the URL through PostgREST; the
+  database's refusals shown next to the field; the JWT kept in the host's memory, the cookie holds a session id only;
+  screenshots in `docs/screens/`;
 - build with `TreatWarningsAsErrors`, CSharpier and JetBrains inspection clean, Husky.Net hooks;
-- 32 tests (31 API tests on Testcontainers with PostgreSQL 18.6 + PostgREST v16.5, ~5 s).
+- 48 tests on Testcontainers with PostgreSQL 18.6 + PostgREST v16.5 (API over HTTP, the host in memory, forms with
+  bUnit), ~7 s.
 
-Next: S03 Blazor front, S04 publication.
+Next: S04 publication (README check from a fresh clone, GitHub Actions, history scan, push on request).
